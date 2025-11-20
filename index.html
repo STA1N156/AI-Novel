@@ -50,17 +50,22 @@
         .tab-enter-active, .tab-leave-active { transition: opacity 0.15s ease; }
         .tab-enter-from, .tab-leave-to { opacity: 0; }
 
-        /* 章节折叠动画优化 */
-        .accordion-enter-active, .accordion-leave-active {
-            transition: max-height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease;
+        /* 章节折叠动画 (Grid 技巧) */
+        .chapter-accordion {
+            /* 折叠动画：较快 */
+            transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             overflow: hidden;
+            max-height: 0;
         }
-        .accordion-enter-from, .accordion-leave-to {
-            max-height: 0 !important;
+        .chapter-accordion.expanded {
+            /* 展开动画：保持原速，更平滑 */
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .chapter-accordion-content {
+            transition: opacity 0.35s ease-in-out;
             opacity: 0;
         }
-        .accordion-enter-to, .accordion-leave-from {
-            max-height: 5000px;
+        .chapter-accordion.expanded .chapter-accordion-content {
             opacity: 1;
         }
 
@@ -440,9 +445,9 @@
                                 </div>
                             </div>
                             
-                            <!-- 章节内容 (手风琴效果) -->
-                            <transition name="accordion">
-                                <div v-show="chapter.isExpanded">
+                            <!-- 章节内容 (Grid 手风琴效果) -->
+                            <div class="chapter-accordion" :class="{ 'expanded': chapter.isExpanded }" :style="{ 'max-height': chapter.isExpanded ? chapter.contentHeight + 'px' : '0px' }">
+                                <div class="chapter-accordion-content" :id="'chapter-content-' + index">
                                     <!-- 阅读模式 -->
                                     <div v-if="!chapter.isEditing" class="px-4 md:px-12 py-6 md:py-12 prose prose-stone max-w-none font-serif text-base md:text-lg text-stone-800 bg-white leading-loose">
                                         <div v-html="renderChapterContent(chapter, index)"></div>
@@ -480,7 +485,7 @@
                                         </template>
                                     </div>
                                 </div>
-                            </transition>
+                            </div>
                         </div>
                     </transition-group>
 
@@ -1101,30 +1106,69 @@
                 };
 
                 const toggleChapter = (index) => {
-// This is a placeholder to make the diff correct.
-                    const isCurrentlyExpanded = chapters.value[index].isExpanded;
-                    if (!isCurrentlyExpanded) {
-                        chapters.value.forEach(c => c.isExpanded = false);
-                    }
-                    chapters.value[index].isExpanded = !isCurrentlyExpanded;
-                    if (!isCurrentlyExpanded) {
-                        setTimeout(() => {
-                            scrollToChapter(index);
-                        }, 300);
+                    const chapter = chapters.value[index];
+                    const isCurrentlyExpanded = chapter.isExpanded;
+
+                    // 先关闭所有其他章节
+                    chapters.value.forEach((c, i) => {
+                        if (i !== index) {
+                            c.isExpanded = false;
+                            c.contentHeight = 0;
+                        }
+                    });
+
+                    // 切换目标章节的状态
+                    chapter.isExpanded = !isCurrentlyExpanded;
+
+                    if (chapter.isExpanded) {
+                        // 使用 nextTick 确保 DOM 可见后再计算高度
+                        nextTick(() => {
+                            const el = document.getElementById('chapter-content-' + index);
+                            if (el) {
+                                chapter.contentHeight = el.scrollHeight;
+                                // 延迟滚动，等待折叠动画完成
+                                setTimeout(() => {
+                                    scrollToChapter(index);
+                                }, 400); // 匹配展开动画的时长
+                            }
+                        });
+                    } else {
+                        // 折叠时，将高度明确设置为 0
+                        chapter.contentHeight = 0;
                     }
                 };
 
                 const scrollToChapter = (index) => {
                     currentChapterIndex.value = index;
-                    chapters.value.forEach((c, i) => c.isExpanded = (i === index));
-                    const el = document.getElementById('chapter-' + index);
-                    if (el && mainScroll.value) {
-                        const topPos = el.offsetTop - (isMobile.value ? 80 : 20); // 为移动端顶部栏留出更多空间
-                        mainScroll.value.scrollTo({
-                            top: topPos,
-                            behavior: 'smooth'
-                        });
-                    }
+
+                    // 确保目标章节是展开的，其他是折叠的
+                    chapters.value.forEach((c, i) => {
+                        c.isExpanded = (i === index);
+                        if (i !== index) {
+                            c.contentHeight = 0;
+                        }
+                    });
+
+                    // 计算新展开章节的高度并滚动
+                    nextTick(() => {
+                        const chapter = chapters.value[index];
+                        const contentEl = document.getElementById('chapter-content-' + index);
+                        if (contentEl) {
+                            chapter.contentHeight = contentEl.scrollHeight;
+                        }
+
+                        // 延迟滚动以等待所有动画完成，确保 offsetTop 计算准确
+                        setTimeout(() => {
+                            const chapterEl = document.getElementById('chapter-' + index);
+                            if (chapterEl && mainScroll.value) {
+                                const topPos = chapterEl.offsetTop - (isMobile.value ? 80 : 20);
+                                mainScroll.value.scrollTo({
+                                    top: topPos,
+                                    behavior: 'smooth'
+                                });
+                            }
+                        }, 400); // 匹配展开动画时长
+                    });
                 };
 
                 const scrollToTop = () => {
@@ -1318,7 +1362,8 @@
                            wordCount: chapterContent.length,
                            isExpanded: false,
                            showSummary: false,
-                           summary: '' // 导入时摘要为空，可后续生成
+                           summary: '', // 导入时摘要为空，可后续生成
+                           contentHeight: 0 // 为动画增加高度属性
                        });
                    });
 
@@ -1389,7 +1434,7 @@
                         const data = JSON.parse(savedV2);
                         novel.value = data.novel || {};
                         structuredCharacters.value = data.characters || [];
-                        chapters.value = (data.chapters || []).map(c => ({ ...c, isExpanded: false, showSummary: false }));
+                        chapters.value = (data.chapters || []).map(c => ({ ...c, isExpanded: false, showSummary: false, contentHeight: 0 }));
                         settings.value = { ...settings.value, ...data.settings };
                         // 强制重置模型为默认值
                         settings.value.model = 'gemini-3-pro-preview-thinking';
@@ -1404,7 +1449,7 @@
                             if (data.novel.characters) {
                                 structuredCharacters.value.push({ id: Date.now(), name: '默认角色组', desc: data.novel.characters });
                             }
-                            chapters.value = (data.chapters || []).map(c => ({ ...c, isExpanded: false, showSummary: false }));
+                            chapters.value = (data.chapters || []).map(c => ({ ...c, isExpanded: false, showSummary: false, contentHeight: 0 }));
                             settings.value = { ...settings.value, ...data.settings };
                             // 强制重置模型为默认值
                             settings.value.model = 'gemini-3-pro-preview-thinking';
@@ -1530,7 +1575,8 @@ ${charPrompt}
                                 summary: summary,
                                 wordCount: content.length,
                                 isExpanded: true,
-                                showSummary: false
+                                showSummary: false,
+                                contentHeight: 0
                             });
 
                             streamContent.value = '';
