@@ -78,32 +78,49 @@
 
         /* 水墨风格笔尖动画 */
         .quill-pen-svg {
-            width: 80px;
-            height: 80px;
+            width: 100px;
+            height: 100px;
             overflow: visible;
+            filter: drop-shadow(0 4px 3px rgba(0,0,0,0.05));
         }
-        .quill-body {
+        .quill-group {
+            transform-origin: 50% 90%;
+            animation: write-complex 3s ease-in-out infinite;
+        }
+        .quill-feather {
             fill: #2c2c2c;
-            transform-origin: 50% 100%;
-            animation: write 1.5s ease-in-out infinite;
         }
-        .ink-drop {
+        .quill-stem {
+            stroke: rgba(255,255,255,0.15);
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            fill: none;
+        }
+        
+        @keyframes write-complex {
+            0% { transform: rotate(-10deg) translateY(0) scale(1); }
+            15% { transform: rotate(5deg) translateY(-4px) scale(1.02); } /* 提笔 */
+            25% { transform: rotate(-15deg) translateY(0) scale(1); } /* 落笔 */
+            35% { transform: rotate(-5deg) translateY(-2px); }
+            45% { transform: rotate(-20deg) translateY(0); }
+            55% { transform: rotate(-8deg) translateY(-3px); }
+            65% { transform: rotate(-12deg) translateY(0); }
+            75% { transform: rotate(2deg) translateY(-6px) scale(1.05); } /* 思考/停顿 */
+            90% { transform: rotate(2deg) translateY(-6px) scale(1.05); }
+            100% { transform: rotate(-10deg) translateY(0) scale(1); }
+        }
+
+        .ink-splash {
             fill: #2c2c2c;
             opacity: 0;
-            animation: drip 3s ease-in-out infinite;
+            animation: ink-splash 3s infinite;
         }
-        @keyframes write {
-            0% { transform: rotate(-5deg) translateY(0); }
-            25% { transform: rotate(5deg) translateY(-2px); }
-            50% { transform: rotate(-5deg) translateY(0); }
-            75% { transform: rotate(2deg) translateY(-1px); }
-            100% { transform: rotate(-5deg) translateY(0); }
-        }
-        @keyframes drip {
-            0% { transform: translateY(-20px) scale(0); opacity: 0; }
-            40% { transform: translateY(0) scale(1); opacity: 1; }
-            80% { transform: translateY(20px) scale(0.5); opacity: 0; }
-            100% { opacity: 0; }
+        
+        @keyframes ink-splash {
+            0%, 70% { transform: translate(50px, 90px) scale(0); opacity: 0; }
+            75% { opacity: 0.6; }
+            85% { transform: translate(50px, 110px) scale(1.2); opacity: 0; }
+            100% { transform: translate(50px, 110px) scale(1.2); opacity: 0; }
         }
         
         /* 卡片悬浮特效 */
@@ -356,14 +373,24 @@
                         <div v-if="isGenerating" class="bg-white shadow-lg border border-stone-200 rounded-xl p-6 md:p-10 relative overflow-hidden">
                             <div class="flex flex-col items-center justify-center mb-8 md:mb-10 space-y-6">
                                 <svg class="quill-pen-svg" viewBox="0 0 100 100">
-                                    <path class="quill-body" d="M50 100 L40 60 C30 40 30 20 50 0 C70 20 70 40 60 60 Z" />
-                                    <circle class="ink-drop" cx="50" cy="100" r="4" />
+                                    <g class="quill-group">
+                                        <!-- 羽毛主体 -->
+                                        <path class="quill-feather" d="M50 95 C 50 95, 60 65, 80 45 C 90 35, 85 15, 65 10 C 55 7, 45 15, 40 30 C 35 45, 45 65, 50 95 Z" />
+                                        <!-- 笔杆细节 -->
+                                        <path class="quill-stem" d="M50 90 Q 55 50 65 10" />
+                                        <!-- 羽毛纹理 -->
+                                        <path class="quill-stem" d="M52 80 Q 65 60 75 45" style="stroke-width: 0.5; opacity: 0.5;" />
+                                        <path class="quill-stem" d="M48 70 Q 40 50 42 35" style="stroke-width: 0.5; opacity: 0.5;" />
+                                    </g>
+                                    <!-- 墨点 -->
+                                    <circle class="ink-splash" cx="0" cy="0" r="3" />
                                 </svg>
-                                <div class="text-center space-y-2">
+                                <div class="text-center space-y-3">
                                     <p class="text-lg md:text-xl font-art text-stone-800">笔耕不辍，思如泉涌</p>
-                                    <p class="text-stone-400 text-xs font-serif tracking-widest uppercase">
-                                        AI 正在构思... <span class="opacity-50 ml-2 font-mono">{{ settings.model }}</span>
-                                    </p>
+                                    <div class="space-y-1">
+                                        <p class="text-stone-400 text-xs font-serif tracking-widest uppercase">AI 正在构思...</p>
+                                        <p class="text-stone-400 text-xs font-mono">{{ settings.model }}</p>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -501,9 +528,9 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs text-stone-500 mb-1">API Key</label>
-                                    <div class="relative">
+                                    <div class="relative flex items-center">
                                         <input :type="showKey ? 'text' : 'password'" v-model="settings.apiKey" @change="saveData" class="w-full bg-stone-50 border border-stone-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-stone-200 focus:border-stone-400 outline-none transition-all pr-10">
-                                        <button @click="showKey = !showKey" class="absolute right-2 top-2 text-stone-400 hover:text-stone-600 p-1">
+                                        <button @click="showKey = !showKey" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-stone-400 hover:text-stone-600 p-1 flex items-center justify-center">
                                             <svg v-if="showKey" class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>
                                             <svg v-else class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
                                         </button>
@@ -836,7 +863,7 @@ ${charPrompt}
                             // 构建全文上下文，让 AI 了解之前的剧情
                             let fullStoryContext = "【前文剧情】\n";
                             // 为了防止请求过大，如果字数过多（超过30万字），可以考虑只取最近的章节，但目前按用户要求发送全文
-                            // 现代大模型(如 Gemini 2.5 Pro)通常支持超长上下文
+                            // 有些大模型(如 Gemini 2.5 Pro)通常支持超长上下文
                             chapters.value.forEach((chapter, index) => {
                                 fullStoryContext += `第${index + 1}章 ${chapter.title}\n(剧情摘要: ${chapter.summary || '暂无'})\n${chapter.content}\n\n`;
                             });
