@@ -196,7 +196,7 @@
         <transition name="toast">
             <div v-if="toast.show" class="fixed top-5 left-1/2 -translate-x-1/2 bg-white text-stone-700 px-8 py-4 rounded-full shadow-2xl border border-stone-200/80 z-[100] flex items-center gap-4">
                 <svg class="icon w-6 h-6" :class="toast.iconColor" viewBox="0 0 24 24" v-html="toast.icon"></svg>
-                <span class="font-semibold text-base whitespace-nowrap">{{ toast.message }}</span>
+                <span class="font-semibold text-base">{{ toast.message }}</span>
             </div>
         </transition>
 
@@ -520,8 +520,8 @@
             </div>
             
             <!-- 侧边栏底部 -->
-            <div class="p-4 border-t border-[#d4d4ce] bg-[#e0e0db] shrink-0">
-                <button @click="clearAll" class="w-full py-2 px-4 text-stone-600 hover:bg-stone-300/50 rounded transition-colors text-sm flex items-center justify-center gap-2">
+            <div class="p-2 md:p-4 border-t border-[#d4d4ce] bg-[#e0e0db] shrink-0">
+                <button @click="clearAll" class="w-full py-1.5 md:py-2 px-4 text-stone-600 hover:bg-stone-300/50 rounded transition-colors text-sm flex items-center justify-center gap-2">
                     <svg class="icon w-5 h-5" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                      清空所有内容
                 </button>
