@@ -64,6 +64,19 @@
             opacity: 1;
         }
 
+       /* 目录摘要折叠动画 (Grid 技巧) */
+       .summary-accordion {
+           display: grid;
+           grid-template-rows: 0fr;
+           transition: grid-template-rows 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+       }
+       .summary-accordion.expanded {
+           grid-template-rows: 1fr;
+       }
+       .summary-accordion > div {
+           overflow: hidden;
+       }
+
         /* 移动端侧边栏滑出动画 */
         .slide-over-enter-active, .slide-over-leave-active {
             transition: transform 0.3s ease-out;
@@ -146,10 +159,10 @@
         </div>
 
         <!-- 移动端遮罩层 -->
-        <div v-if="mobileSidebarOpen" @click="mobileSidebarOpen = false" class="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"></div>
+        <div v-if="mobileSidebarOpen" @click="mobileSidebarOpen = false" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 md:hidden transition-opacity"></div>
 
         <!-- 侧边栏 (响应式) -->
-        <aside class="fixed md:static inset-y-0 left-0 w-3/4 md:w-96 bg-[#e8e8e3] border-r border-[#d4d4ce] flex flex-col shadow-2xl z-50 transform transition-transform duration-300 md:transform-none"
+        <aside class="fixed md:static inset-y-0 left-0 w-5/6 md:w-96 bg-[#e8e8e3] border-r border-[#d4d4ce] flex flex-col shadow-2xl z-50 transform transition-transform duration-300 md:transform-none rounded-r-2xl md:rounded-none overflow-hidden"
                :class="{'translate-x-0': mobileSidebarOpen, '-translate-x-full': !mobileSidebarOpen && isMobile}">
             
             <!-- 侧边栏头部 (仅桌面端显示) -->
@@ -169,7 +182,7 @@
              <div class="flex md:hidden p-4 border-b border-[#d4d4ce] justify-between items-center bg-[#e0e0db] shrink-0">
                 <span class="font-bold text-stone-700">功能菜单</span>
                 <div class="flex items-center gap-3">
-                    <button @click="exportBook" class="text-stone-600 bg-stone-200 p-2 rounded-full"><svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></button>
+                    <button @click="exportBook" class="text-stone-600 p-2"><svg class="icon w-5 h-5" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></button>
                     <button @click="mobileSidebarOpen = false" class="text-stone-600 p-2"><svg class="icon w-6 h-6" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
                 </div>
              </div>
@@ -260,14 +273,35 @@
                         <div class="space-y-1">
                             <transition-group name="list">
                                 <div v-for="(chapter, index) in chapters" :key="index"
-                                     @click="scrollToChapter(index); mobileSidebarOpen = false;"
-                                     class="cursor-pointer px-4 py-3 rounded-lg hover:bg-white hover:shadow-sm text-sm transition-all flex items-center justify-between group border border-transparent hover:border-stone-200"
-                                     :class="{'bg-white shadow-sm border-stone-200 font-bold': currentChapterIndex === index}">
-                                    <div class="flex items-center gap-3 truncate">
-                                        <span class="text-xs font-mono text-stone-400 w-6">{{ index + 1 }}</span>
-                                        <span class="truncate">{{ chapter.title || '未命名章节' }}</span>
+                                     class="rounded-lg hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-stone-200"
+                                     :class="{'bg-white shadow-sm border-stone-200': currentChapterIndex === index}">
+                                    
+                                    <!-- 标题行 -->
+                                    <div class="flex items-center justify-between px-4 py-3 cursor-pointer group">
+                                        <!-- 左侧：序号+标题 (点击跳转) -->
+                                        <div class="flex items-center gap-3 truncate flex-1" @click="scrollToChapter(index); mobileSidebarOpen = false;">
+                                            <span class="text-xs font-mono text-stone-400 w-6">{{ index + 1 }}</span>
+                                            <span class="truncate text-sm" :class="{'font-bold': currentChapterIndex === index}">{{ chapter.title || '未命名章节' }}</span>
+                                        </div>
+                                        
+                                        <!-- 右侧：字数 + 展开箭头 -->
+                                        <div class="flex items-center gap-1">
+                                            <span class="text-[10px] text-stone-400 opacity-0 group-hover:opacity-100 transition-opacity">{{ chapter.wordCount }}字</span>
+                                            <button @click.stop="chapter.showSummary = !chapter.showSummary" class="p-1.5 text-stone-400 hover:text-stone-600 rounded-full hover:bg-stone-100 transition-colors flex items-center justify-center" title="剧情摘要">
+                                                <svg class="icon w-3.5 h-3.5 transition-transform duration-200" :class="{'rotate-180': chapter.showSummary}" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <span class="text-[10px] text-stone-400 opacity-0 group-hover:opacity-100 transition-opacity">{{ chapter.wordCount }}字</span>
+
+                                    <!-- 摘要区域 (折叠) -->
+                                    <div class="summary-accordion" :class="{ 'expanded': chapter.showSummary }">
+                                       <div>
+                                           <div class="px-4 pb-3 pt-1">
+                                               <textarea v-model="chapter.summary" @change="saveData" placeholder="本章剧情摘要..." rows="4"
+                                                         class="w-full bg-white/50 text-xs text-stone-600 resize-none focus:outline-none border-t border-stone-200/80 focus:border-stone-400 rounded-b-md p-3 leading-relaxed focus:bg-white"></textarea>
+                                           </div>
+                                       </div>
+                                    </div>
                                 </div>
                             </transition-group>
                         </div>
@@ -277,20 +311,65 @@
                     </div>
                 </transition>
 
-                <!-- 脉络 Tab -->
+                <!-- 查找/替换 Tab -->
                 <transition name="tab">
-                    <div v-if="currentTab === 'plot'" class="absolute inset-0 overflow-y-auto p-4">
-                        <div class="space-y-4">
-                            <div v-for="(chapter, index) in chapters" :key="index" class="bg-[#f5f5f0] border border-[#d4d4ce] rounded-lg p-3 hover:border-stone-400 transition-all">
-                                <div class="flex justify-between items-center mb-2 border-b border-stone-200 pb-2">
-                                    <span class="text-xs font-bold text-stone-500">第 {{ index + 1 }} 章</span>
-                                    <span class="text-xs font-bold text-stone-800 truncate max-w-[120px]">{{ chapter.title }}</span>
+                    <div v-if="currentTab === 'search'" class="absolute inset-0 overflow-y-auto p-4 flex flex-col">
+                        <div class="space-y-4 flex-1">
+                            <!-- 搜索输入 -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-stone-500 uppercase tracking-wider">查找内容</label>
+                                <div class="relative">
+                                    <input v-model="searchQuery" @keyup.enter="performSearch" placeholder="输入要查找的文字..."
+                                           class="w-full bg-[#f5f5f0] border border-[#d4d4ce] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-stone-500 focus:ring-1 focus:ring-stone-200 transition-all">
+                                    <button v-if="searchQuery" @click="searchQuery = ''; searchResults = []" class="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
+                                        <svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                                    </button>
                                 </div>
-                                <textarea v-model="chapter.summary" @change="saveData" placeholder="本章剧情摘要..." rows="3"
-                                          class="w-full bg-transparent text-xs text-stone-600 resize-none focus:outline-none border border-transparent focus:border-stone-300 rounded p-1 leading-relaxed"></textarea>
                             </div>
-                            <div v-if="chapters.length === 0" class="text-stone-400 text-sm italic text-center py-10">
-                                暂无剧情脉络
+
+                            <!-- 替换输入 -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-stone-500 uppercase tracking-wider">替换为</label>
+                                <input v-model="replaceQuery" placeholder="输入替换后的文字..."
+                                       class="w-full bg-[#f5f5f0] border border-[#d4d4ce] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-stone-500 focus:ring-1 focus:ring-stone-200 transition-all">
+                            </div>
+
+                            <!-- 操作按钮 -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <button @click="performSearch" class="bg-stone-800 text-white py-2 rounded-lg text-xs hover:bg-stone-700 transition-colors">查找全部</button>
+                                <button @click="replaceAll" :disabled="!searchResults.length" class="bg-stone-200 text-stone-800 py-2 rounded-lg text-xs hover:bg-stone-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">全部替换</button>
+                            </div>
+                            
+                            <div class="flex gap-2 border-t border-stone-200 pt-3 mt-2" v-if="searchResults.length > 0">
+                                <button @click="replaceCurrentMatch" class="flex-1 bg-stone-200 text-stone-800 py-2 rounded-lg text-xs hover:bg-stone-300 transition-colors">替换当前</button>
+                                <div class="flex gap-1">
+                                    <button @click="prevMatch" class="px-3 py-2 bg-stone-100 rounded-lg hover:bg-stone-200 text-stone-600 disabled:opacity-50" :disabled="currentMatchIndex <= 0">
+                                        <svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" transform="rotate(90 12 12)"/></svg>
+                                    </button>
+                                    <button @click="nextMatch" class="px-3 py-2 bg-stone-100 rounded-lg hover:bg-stone-200 text-stone-600 disabled:opacity-50" :disabled="currentMatchIndex >= searchResults.length - 1">
+                                        <svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" transform="rotate(-90 12 12)"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 结果列表 -->
+                            <div v-if="searchResults.length > 0" class="mt-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-xs font-bold text-stone-500">查找结果 ({{ searchResults.length }})</span>
+                                    <span class="text-xs text-stone-400">{{ currentMatchIndex + 1 }} / {{ searchResults.length }}</span>
+                                </div>
+                                <div class="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                                    <div v-for="(result, index) in searchResults" :key="index"
+                                         @click="jumpToMatch(index)"
+                                         class="p-2 rounded border text-xs cursor-pointer transition-all"
+                                         :class="currentMatchIndex === index ? 'bg-stone-800 text-white border-stone-800' : 'bg-white border-stone-200 text-stone-600 hover:border-stone-400'">
+                                        <div class="font-bold mb-1">第 {{ result.chapterIndex + 1 }} 章</div>
+                                        <div class="truncate opacity-80" v-html="result.context"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else-if="hasSearched" class="mt-8 text-center text-stone-400 text-xs">
+                                未找到相关内容
                             </div>
                         </div>
                     </div>
@@ -347,21 +426,41 @@
                             <!-- 章节内容 (手风琴效果) -->
                             <transition name="accordion">
                                 <div v-show="chapter.isExpanded">
-                                    <div class="px-4 md:px-12 py-6 md:py-12 prose prose-stone max-w-none font-serif text-base md:text-lg text-stone-800 bg-white leading-loose">
-                                        <div v-html="renderMarkdown(chapter.content)"></div>
+                                    <!-- 阅读模式 -->
+                                    <div v-if="!chapter.isEditing" class="px-4 md:px-12 py-6 md:py-12 prose prose-stone max-w-none font-serif text-base md:text-lg text-stone-800 bg-white leading-loose">
+                                        <div v-html="renderChapterContent(chapter, index)"></div>
+                                    </div>
+                                    <!-- 编辑模式 -->
+                                    <div v-else class="px-4 md:px-12 py-6 md:py-12 bg-white">
+                                        <textarea v-model="chapter.tempContent" rows="20"
+                                                  class="w-full p-4 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-300 font-serif text-base md:text-lg leading-loose resize-y text-stone-800"></textarea>
                                     </div>
                                     
                                     <!-- 章节操作 -->
                                     <div class="px-4 md:px-8 py-4 bg-stone-50 border-t border-stone-100 flex justify-end gap-2 md:gap-3 opacity-100 transition-opacity overflow-x-auto">
-                                        <button @click.stop="copyChapter(index)" class="text-xs text-stone-500 hover:text-stone-800 px-3 py-1.5 rounded-md bg-stone-100 hover:bg-stone-200 transition-colors flex items-center gap-1 whitespace-nowrap">
-                                            <svg class="icon w-3 h-3" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> 复制
-                                        </button>
-                                        <button @click.stop="deleteChapter(index)" class="text-xs text-red-400 hover:text-red-600 px-3 py-1.5 rounded-md bg-red-50 hover:bg-red-100 transition-colors flex items-center gap-1 whitespace-nowrap">
-                                            <svg class="icon w-3 h-3" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg> 删除
-                                        </button>
-                                        <button @click.stop="regenerateChapter(index)" class="text-xs text-stone-500 hover:text-stone-700 px-3 py-1.5 rounded-md bg-stone-200 hover:bg-stone-300 transition-colors flex items-center gap-1 whitespace-nowrap">
-                                            <svg class="icon w-3 h-3" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg> 重写
-                                        </button>
+                                        <template v-if="chapter.isEditing">
+                                            <button @click.stop="saveChapterEdit(index)" class="text-xs text-white hover:bg-stone-700 px-4 py-1.5 rounded-md bg-stone-800 transition-colors flex items-center gap-1 whitespace-nowrap shadow-sm">
+                                                <svg class="icon w-3 h-3" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> 保存
+                                            </button>
+                                            <button @click.stop="cancelChapterEdit(index)" class="text-xs text-stone-600 hover:bg-stone-200 px-4 py-1.5 rounded-md bg-white border border-stone-200 transition-colors flex items-center gap-1 whitespace-nowrap">
+                                                <svg class="icon w-3 h-3" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> 取消
+                                            </button>
+                                        </template>
+                                        <template v-else>
+                                            <button @click.stop="startChapterEdit(index)" class="text-xs text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-md bg-white border border-stone-200 hover:bg-stone-50 transition-colors flex items-center gap-1 whitespace-nowrap">
+                                                <svg class="icon w-3 h-3" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> 编辑
+                                            </button>
+                                            <div class="w-[1px] h-5 bg-stone-200 mx-1 self-center"></div>
+                                            <button @click.stop="copyChapter(index)" class="text-xs text-stone-500 hover:text-stone-800 px-3 py-1.5 rounded-md bg-stone-100 hover:bg-stone-200 transition-colors flex items-center gap-1 whitespace-nowrap">
+                                                <svg class="icon w-3 h-3" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> 复制
+                                            </button>
+                                            <button @click.stop="deleteChapter(index)" class="text-xs text-red-400 hover:text-red-600 px-3 py-1.5 rounded-md bg-red-50 hover:bg-red-100 transition-colors flex items-center gap-1 whitespace-nowrap">
+                                                <svg class="icon w-3 h-3" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg> 删除
+                                            </button>
+                                            <button @click.stop="regenerateChapter(index)" class="text-xs text-stone-500 hover:text-stone-700 px-3 py-1.5 rounded-md bg-stone-200 hover:bg-stone-300 transition-colors flex items-center gap-1 whitespace-nowrap">
+                                                <svg class="icon w-3 h-3" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg> 重写
+                                            </button>
+                                        </template>
                                     </div>
                                 </div>
                             </transition>
@@ -504,6 +603,25 @@
             </div>
         </transition>
 
+        <!-- 通用确认弹窗 -->
+        <transition name="pop">
+            <div v-if="showConfirmModal" class="fixed inset-0 bg-stone-900/20 backdrop-blur-sm z-[70] flex items-center justify-center p-4" @click.self="cancelConfirm">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden p-6 space-y-6 animate-pop-in">
+                    <div class="text-center space-y-2">
+                        <div v-if="confirmModalConfig.icon" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" :class="confirmModalConfig.iconBg">
+                            <svg class="icon w-6 h-6" :class="confirmModalConfig.iconColor" viewBox="0 0 24 24" v-html="confirmModalConfig.icon"></svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-stone-800">{{ confirmModalConfig.title }}</h3>
+                        <p class="text-sm text-stone-500">{{ confirmModalConfig.message }}</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button @click="cancelConfirm" class="flex-1 py-2 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200 transition-colors text-sm font-bold">取消</button>
+                        <button @click="executeConfirm" class="flex-1 py-2 text-white rounded-lg transition-colors text-sm font-bold shadow-lg" :class="confirmModalConfig.confirmBtnClass">{{ confirmModalConfig.confirmBtnText }}</button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
         <!-- 设置弹窗 (移动端全屏适配) -->
         <transition name="pop">
             <div v-if="showSettings" class="fixed inset-0 bg-stone-900/20 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="showSettings = false">
@@ -592,6 +710,12 @@
                 const showSettings = ref(false);
                 const showDeleteCharModal = ref(false);
                 const charToDeleteIndex = ref(-1);
+
+               // 通用确认弹窗状态
+               const showConfirmModal = ref(false);
+               const confirmModalConfig = ref({});
+               let confirmCallback = null;
+
                 const showKey = ref(false);
                 const isGenerating = ref(false);
                 const isLoadingModels = ref(false);
@@ -603,6 +727,13 @@
                 const mainScroll = ref(null);
                 const currentChapterIndex = ref(-1);
                 const wordCountTarget = ref(2500);
+
+                // 搜索状态
+                const searchQuery = ref('');
+                const replaceQuery = ref('');
+                const searchResults = ref([]);
+                const currentMatchIndex = ref(-1);
+                const hasSearched = ref(false);
                 
                 // 下拉菜单状态
                 const showWordCountSelect = ref(false);
@@ -628,7 +759,7 @@
                     { id: 'settings', name: '设定' },
                     { id: 'characters', name: '角色' },
                     { id: 'chapters', name: '目录' },
-                    { id: 'plot', name: '脉络' }
+                    { id: 'search', name: '查找' }
                 ];
 
                 // 数据
@@ -658,6 +789,34 @@
                 });
 
                 // 方法
+               const openConfirmModal = (config, onConfirm) => {
+                   confirmModalConfig.value = {
+                       title: '请确认',
+                       message: '确定要执行此操作吗？',
+                       confirmBtnText: '确认',
+                       confirmBtnClass: 'bg-red-500 hover:bg-red-600 shadow-red-500/30',
+                       icon: '<path d="M11 7h2v6h-2zm0 8h2v2h-2zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>',
+                       iconBg: 'bg-yellow-100',
+                       iconColor: 'text-yellow-500',
+                       ...config
+                   };
+                   confirmCallback = onConfirm;
+                   showConfirmModal.value = true;
+               };
+
+               const executeConfirm = () => {
+                   if (typeof confirmCallback === 'function') {
+                       confirmCallback();
+                   }
+                   showConfirmModal.value = false;
+                   confirmCallback = null;
+               };
+
+               const cancelConfirm = () => {
+                   showConfirmModal.value = false;
+                   confirmCallback = null;
+               };
+
                 const openSettings = () => { showSettings.value = true; };
 
                 const addCharacter = () => {
@@ -681,7 +840,194 @@
 
                 const renderMarkdown = (text) => marked.parse(text || '');
 
+                const renderChapterContent = (chapter, chapterIndex) => {
+                    let html = marked.parse(chapter.content || '');
+                    
+                    // 如果有搜索结果且当前章节包含匹配项
+                    if (searchQuery.value && searchResults.value.length > 0) {
+                        // 简单的正则替换高亮，注意这里只替换文本，不处理复杂的 HTML 标签嵌套情况
+                        // 为了避免破坏 HTML 标签，我们只替换不在 < > 内的文本
+                        // 这是一个简化的实现
+                        try {
+                            const regex = new RegExp(`(${searchQuery.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                            
+                            // 标记当前选中的匹配项
+                            let matchCountInPrevChapters = 0;
+                            for(let i=0; i<chapterIndex; i++) {
+                                matchCountInPrevChapters += (chapters.value[i].content.match(regex) || []).length;
+                            }
+
+                            let localMatchIndex = 0;
+                            html = html.replace(regex, (match) => {
+                                const globalIndex = matchCountInPrevChapters + localMatchIndex;
+                                const isCurrent = globalIndex === currentMatchIndex.value;
+                                localMatchIndex++;
+                                const style = isCurrent ? 'background-color: #facc15; color: black; font-weight: bold;' : 'background-color: #fef08a; color: black;';
+                                return `<span id="match-${globalIndex}" style="${style}">${match}</span>`;
+                            });
+                        } catch (e) {
+                            console.error('Highlight error:', e);
+                        }
+                    }
+                    return html;
+                };
+
+                // 编辑功能
+                const startChapterEdit = (index) => {
+                    chapters.value[index].tempContent = chapters.value[index].content;
+                    chapters.value[index].isEditing = true;
+                };
+
+                const saveChapterEdit = (index) => {
+                    chapters.value[index].content = chapters.value[index].tempContent;
+                    chapters.value[index].isEditing = false;
+                    chapters.value[index].wordCount = chapters.value[index].content.length;
+                    saveData();
+                    // 如果正在搜索，重新搜索以更新结果
+                    if (searchQuery.value) performSearch();
+                };
+
+                const cancelChapterEdit = (index) => {
+                    chapters.value[index].isEditing = false;
+                };
+
+                // 搜索功能
+                const performSearch = () => {
+                    if (!searchQuery.value) return;
+                    searchResults.value = [];
+                    hasSearched.value = true;
+                    
+                    const regex = new RegExp(searchQuery.value, 'gi');
+                    
+                    chapters.value.forEach((chapter, cIndex) => {
+                        let match;
+                        while ((match = regex.exec(chapter.content)) !== null) {
+                            // 获取上下文
+                            const start = Math.max(0, match.index - 10);
+                            const end = Math.min(chapter.content.length, match.index + searchQuery.value.length + 10);
+                            let context = chapter.content.substring(start, end);
+                            
+                            // 高亮上下文中的关键词
+                            context = context.replace(new RegExp(searchQuery.value, 'gi'), '<b>$&</b>');
+                            if (start > 0) context = '...' + context;
+                            if (end < chapter.content.length) context = context + '...';
+
+                            searchResults.value.push({
+                                chapterIndex: cIndex,
+                                matchIndex: match.index,
+                                context: context
+                            });
+                        }
+                    });
+
+                    if (searchResults.value.length > 0) {
+                        currentMatchIndex.value = 0;
+                        jumpToMatch(0);
+                    } else {
+                        currentMatchIndex.value = -1;
+                    }
+                };
+
+                const jumpToMatch = (index) => {
+                    if (index < 0 || index >= searchResults.value.length) return;
+                    currentMatchIndex.value = index;
+                    const result = searchResults.value[index];
+                    
+                    // 展开对应章节
+                    if (!chapters.value[result.chapterIndex].isExpanded) {
+                        toggleChapter(result.chapterIndex);
+                    } else {
+                        scrollToChapter(result.chapterIndex);
+                    }
+
+                    // 滚动到具体位置 (需要等待 DOM 更新)
+                    nextTick(() => {
+                        const el = document.getElementById(`match-${index}`);
+                        if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    });
+                };
+
+                const nextMatch = () => {
+                    if (searchResults.value.length === 0) return;
+                    const next = (currentMatchIndex.value + 1) % searchResults.value.length;
+                    jumpToMatch(next);
+                };
+
+                const prevMatch = () => {
+                    if (searchResults.value.length === 0) return;
+                    const prev = (currentMatchIndex.value - 1 + searchResults.value.length) % searchResults.value.length;
+                    jumpToMatch(prev);
+                };
+
+                const replaceCurrentMatch = () => {
+                   if (currentMatchIndex.value === -1 || searchResults.value.length === 0) return;
+
+                   openConfirmModal({
+                       title: '替换当前',
+                       message: `确定要将选中的 "${searchQuery.value}" 替换为 "${replaceQuery.value}" 吗？`,
+                       confirmBtnText: '替换',
+                       confirmBtnClass: 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/30',
+                       icon: '<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 14H9v-2h4v2zm3-4H9v-2h7v2zm-1-4-3-3v3h3z"/>',
+                       iconBg: 'bg-blue-100',
+                       iconColor: 'text-blue-500',
+                   }, () => {
+                       const result = searchResults.value[currentMatchIndex.value];
+                       const chapter = chapters.value[result.chapterIndex];
+                       
+                       let matchCountInPrevChapters = 0;
+                       for(let i=0; i<result.chapterIndex; i++) {
+                           matchCountInPrevChapters += (chapters.value[i].content.match(new RegExp(searchQuery.value, 'gi')) || []).length;
+                       }
+                       
+                       const localMatchIndex = currentMatchIndex.value - matchCountInPrevChapters;
+                       
+                       let count = 0;
+                       const regex = new RegExp(searchQuery.value, 'gi');
+                       chapter.content = chapter.content.replace(regex, (match) => {
+                           if (count === localMatchIndex) {
+                               count++;
+                               return replaceQuery.value;
+                           }
+                           count++;
+                           return match;
+                       });
+                       
+                       saveData();
+                       performSearch();
+                   });
+                };
+
+                const replaceAll = () => {
+                   if (!searchQuery.value) return;
+                   openConfirmModal({
+                       title: '全部替换',
+                       message: `确定要将所有的 "${searchQuery.value}" 替换为 "${replaceQuery.value}" 吗？`,
+                       confirmBtnText: '全部替换',
+                       confirmBtnClass: 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30',
+                       icon: '<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 14H9v-2h4v2zm3-4H9v-2h7v2zm-1-4-3-3v3h3z"/>',
+                       iconBg: 'bg-orange-100',
+                       iconColor: 'text-orange-500',
+                   }, () => {
+                       const regex = new RegExp(searchQuery.value, 'gi');
+                       let count = 0;
+                       chapters.value.forEach(chapter => {
+                           const matches = chapter.content.match(regex);
+                           if (matches) {
+                               count += matches.length;
+                               chapter.content = chapter.content.replace(regex, replaceQuery.value);
+                           }
+                       });
+                       
+                       saveData();
+                       alert(`已替换 ${count} 处内容`);
+                       performSearch(); // 刷新结果（应该是空的了）
+                   });
+                };
+
                 const toggleChapter = (index) => {
+// This is a placeholder to make the diff correct.
                     const isCurrentlyExpanded = chapters.value[index].isExpanded;
                     if (!isCurrentlyExpanded) {
                         chapters.value.forEach(c => c.isExpanded = false);
@@ -712,10 +1058,18 @@
                 };
 
                 const deleteChapter = (index) => {
-                    if(confirm('确定要删除这一章吗？')) {
-                        chapters.value.splice(index, 1);
-                        saveData();
-                    }
+                   openConfirmModal({
+                       title: '删除章节',
+                       message: '确定要删除这一章吗？此操作不可恢复。',
+                       confirmBtnText: '删除',
+                       confirmBtnClass: 'bg-red-500 hover:bg-red-600 shadow-red-500/30',
+                       icon: '<path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>',
+                       iconBg: 'bg-red-100',
+                       iconColor: 'text-red-500',
+                   }, () => {
+                       chapters.value.splice(index, 1);
+                       saveData();
+                   });
                 };
                 
                 const copyChapter = (index) => {
@@ -730,10 +1084,18 @@
                 };
 
                 const regenerateChapter = (index) => {
-                    if(confirm('重写将覆盖本章原有内容，确定吗？')) {
-                        chapters.value.splice(index, 1);
-                        startGeneration();
-                    }
+                   openConfirmModal({
+                       title: '重写章节',
+                       message: '重写将使用当前上下文生成新的内容并覆盖本章，确定吗？',
+                       confirmBtnText: '确认重写',
+                       confirmBtnClass: 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/30',
+                       icon: '<path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>',
+                       iconBg: 'bg-blue-100',
+                       iconColor: 'text-blue-500',
+                   }, () => {
+                       chapters.value.splice(index, 1);
+                       startGeneration();
+                   });
                 };
                 
                 // 导出书籍功能
@@ -762,12 +1124,20 @@
                 };
 
                 const clearAll = () => {
-                    if(confirm('确定要清空所有内容吗？此操作不可恢复。')) {
-                        novel.value = { title: '', worldView: '' };
-                        structuredCharacters.value = [];
-                        chapters.value = [];
-                        saveData();
-                    }
+                   openConfirmModal({
+                       title: '清空所有内容',
+                       message: '确定要清空所有小说内容、角色和设定吗？此操作不可恢复。',
+                       confirmBtnText: '全部清空',
+                       confirmBtnClass: 'bg-red-500 hover:bg-red-600 shadow-red-500/30',
+                       icon: '<path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>',
+                       iconBg: 'bg-red-100',
+                       iconColor: 'text-red-500',
+                   }, () => {
+                       novel.value = { title: '', worldView: '' };
+                       structuredCharacters.value = [];
+                       chapters.value = [];
+                       saveData();
+                   });
                 };
 
                 const selectModel = (id) => { settings.value.model = id; saveData(); };
@@ -809,7 +1179,7 @@
                         const data = JSON.parse(savedV2);
                         novel.value = data.novel || {};
                         structuredCharacters.value = data.characters || [];
-                        chapters.value = data.chapters || [];
+                        chapters.value = (data.chapters || []).map(c => ({ ...c, showSummary: false }));
                         settings.value = { ...settings.value, ...data.settings };
                         // 强制重置模型为默认值
                         settings.value.model = 'gemini-3-pro-preview-thinking';
@@ -824,7 +1194,7 @@
                             if (data.novel.characters) {
                                 structuredCharacters.value.push({ id: Date.now(), name: '默认角色组', desc: data.novel.characters });
                             }
-                            chapters.value = data.chapters || [];
+                            chapters.value = (data.chapters || []).map(c => ({ ...c, showSummary: false }));
                             settings.value = { ...settings.value, ...data.settings };
                             // 强制重置模型为默认值
                             settings.value.model = 'gemini-3-pro-preview-thinking';
@@ -949,7 +1319,8 @@ ${charPrompt}
                                 content: content,
                                 summary: summary,
                                 wordCount: content.length,
-                                isExpanded: true
+                                isExpanded: true,
+                                showSummary: false
                             });
 
                             streamContent.value = '';
@@ -989,11 +1360,15 @@ ${charPrompt}
                     showSettings, showDeleteCharModal, showKey, isGenerating, isLoadingModels, mobileSidebarOpen, isMobile,
                     novel, structuredCharacters, chapters, settings, streamContent, nextChapterPrompt,
                     generateCount, modelSearch, filteredModels, availableModels, wordCountTarget,
+                    showConfirmModal, confirmModalConfig, executeConfirm, cancelConfirm,
                     totalWordCount, currentChapterIndex, mainScroll, currentTab, tabs,
                     showWordCountSelect, showGenerateCountSelect, wordCountOptions, generateCountOptions, wordCountLabel, generateCountLabel,
                     toggleChapter, scrollToChapter, scrollToTop, scrollToBottom, deleteChapter, regenerateChapter, copyChapter, exportBook,
                     clearAll, selectModel, fetchModels, saveData, startGeneration,
-                    renderMarkdown, addCharacter, removeCharacter, confirmDeleteCharacter, openSettings
+                    renderMarkdown, addCharacter, removeCharacter, confirmDeleteCharacter, openSettings,
+                    startChapterEdit, saveChapterEdit, cancelChapterEdit, renderChapterContent,
+                    searchQuery, replaceQuery, searchResults, currentMatchIndex, hasSearched,
+                    performSearch, replaceCurrentMatch, replaceAll, nextMatch, prevMatch, jumpToMatch
                 };
             }
         }).mount('#app');
