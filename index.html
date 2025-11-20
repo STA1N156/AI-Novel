@@ -173,9 +173,9 @@
         
         <!-- Toast 提示 -->
         <transition name="toast">
-            <div v-if="toast.show" class="fixed top-5 left-1/2 -translate-x-1/2 bg-white text-stone-700 px-6 py-3 rounded-full shadow-2xl border border-stone-200/80 z-[100] flex items-center gap-3">
-                <svg class="icon w-5 h-5" :class="toast.iconColor" viewBox="0 0 24 24" v-html="toast.icon"></svg>
-                <span class="font-semibold text-sm">{{ toast.message }}</span>
+            <div v-if="toast.show" class="fixed top-5 left-1/2 -translate-x-1/2 bg-white text-stone-700 px-8 py-4 rounded-full shadow-2xl border border-stone-200/80 z-[100] flex items-center gap-4">
+                <svg class="icon w-6 h-6" :class="toast.iconColor" viewBox="0 0 24 24" v-html="toast.icon"></svg>
+                <span class="font-semibold text-base">{{ toast.message }}</span>
             </div>
         </transition>
 
@@ -315,7 +315,7 @@
                                     <div class="flex items-center justify-between px-4 py-3 cursor-pointer group">
                                         <!-- 左侧：序号+标题 (点击跳转) -->
                                         <div class="flex items-center gap-3 truncate flex-1" @click="scrollToChapter(index); mobileSidebarOpen = false;">
-                                            <span class="text-xs font-mono text-stone-400 w-6">{{ index + 1 }}</span>
+                                            <span class="text-sm font-mono text-stone-400 w-6 font-bold">{{ index + 1 }}</span>
                                             <span class="truncate text-base" :class="{'font-bold': currentChapterIndex === index}">{{ chapter.title || '未命名章节' }}</span>
                                         </div>
                                         
