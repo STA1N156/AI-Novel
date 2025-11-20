@@ -1569,14 +1569,20 @@ ${charPrompt}
                                 }
                             }
 
+                            const newChapterIndex = chapters.value.length;
                             chapters.value.push({
-                                title: title || `新章节 ${chapters.value.length + 1}`,
+                                title: title || `新章节 ${newChapterIndex + 1}`,
                                 content: content,
                                 summary: summary,
                                 wordCount: content.length,
                                 isExpanded: true,
                                 showSummary: false,
                                 contentHeight: 0
+                            });
+
+                            // 确保 DOM 更新后计算高度并滚动，解决生成后内容折叠的问题
+                            nextTick(() => {
+                                scrollToChapter(newChapterIndex);
                             });
 
                             streamContent.value = '';
