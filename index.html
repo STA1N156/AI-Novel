@@ -142,11 +142,28 @@
         
         /* 通用图标样式 */
         .icon { width: 1.2em; height: 1.2em; fill: currentColor; display: inline-block; vertical-align: middle; }
+
+        /* Toast 提示动画 */
+        .toast-enter-active, .toast-leave-active {
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .toast-enter-from, .toast-leave-to {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col md:flex-row overflow-hidden selection:bg-stone-300 selection:text-stone-900">
     <div id="app" class="w-full h-full flex relative">
         
+        <!-- Toast 提示 -->
+        <transition name="toast">
+            <div v-if="toast.show" class="fixed top-5 left-1/2 -translate-x-1/2 bg-white text-stone-700 px-6 py-3 rounded-full shadow-2xl border border-stone-200/80 z-[100] flex items-center gap-3">
+                <svg class="icon w-5 h-5" :class="toast.iconColor" viewBox="0 0 24 24" v-html="toast.icon"></svg>
+                <span class="font-semibold text-sm">{{ toast.message }}</span>
+            </div>
+        </transition>
+
         <!-- 移动端顶部导航栏 -->
         <div class="md:hidden absolute top-0 left-0 w-full h-14 bg-[#e8e8e3] border-b border-[#d4d4ce] flex justify-between items-center px-4 z-30 shadow-sm">
             <button @click="mobileSidebarOpen = true" class="text-stone-600">
@@ -162,19 +179,19 @@
         <div v-if="mobileSidebarOpen" @click="mobileSidebarOpen = false" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 md:hidden transition-opacity"></div>
 
         <!-- 侧边栏 (响应式) -->
-        <aside class="fixed md:static inset-y-0 left-0 w-5/6 md:w-96 bg-[#e8e8e3] border-r border-[#d4d4ce] flex flex-col shadow-2xl z-50 transform transition-transform duration-300 md:transform-none rounded-r-2xl md:rounded-none overflow-hidden"
+        <aside class="fixed md:static inset-y-0 left-0 w-5/6 md:w-96 bg-[#e8e8e3] border-r border-[#d4d4ce] flex flex-col shadow-2xl z-50 transform transition-transform duration-300 md:transform-none rounded-r-3xl md:rounded-none overflow-hidden"
                :class="{'translate-x-0': mobileSidebarOpen, '-translate-x-full': !mobileSidebarOpen && isMobile}">
             
             <!-- 侧边栏头部 (仅桌面端显示) -->
             <div class="hidden md:flex p-5 border-b border-[#d4d4ce] justify-between items-center bg-[#e0e0db] shrink-0">
                 <h1 class="text-2xl font-art text-stone-800 select-none">墨韵 · 造梦</h1>
                 <div class="flex gap-2">
-                    <button @click="exportBook" class="text-stone-500 hover:text-stone-800 transition-colors p-2 rounded-full hover:bg-stone-300/50" title="导出TXT">
-                        <svg class="icon w-5 h-5" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                    </button>
-                    <button @click="openSettings" class="text-stone-500 hover:text-stone-800 transition-colors p-2 rounded-full hover:bg-stone-300/50" title="设置">
-                        <svg class="icon w-5 h-5" viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
-                    </button>
+                   <button @click="showImportExportModal = true" class="text-stone-500 hover:text-stone-800 transition-colors p-2 rounded-full hover:bg-stone-300/50" title="导入/导出">
+                       <svg class="icon w-5 h-5" viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                   </button>
+                   <button @click="openSettings" class="text-stone-500 hover:text-stone-800 transition-colors p-2 rounded-full hover:bg-stone-300/50" title="设置">
+                       <svg class="icon w-5 h-5" viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+                   </button>
                 </div>
             </div>
 
@@ -182,7 +199,7 @@
              <div class="flex md:hidden p-4 border-b border-[#d4d4ce] justify-between items-center bg-[#e0e0db] shrink-0">
                 <span class="font-bold text-stone-700">功能菜单</span>
                 <div class="flex items-center gap-3">
-                    <button @click="exportBook" class="text-stone-600 p-2"><svg class="icon w-5 h-5" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></button>
+                    <button @click="showImportExportModal = true" class="text-stone-600 p-2" title="导入/导出"><svg class="icon w-5 h-5" viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg></button>
                     <button @click="mobileSidebarOpen = false" class="text-stone-600 p-2"><svg class="icon w-6 h-6" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
                 </div>
              </div>
@@ -699,9 +716,36 @@
             </div>
         </transition>
 
+        <!-- 导入/导出 弹窗 -->
+        <transition name="pop">
+            <div v-if="showImportExportModal" class="fixed inset-0 bg-stone-900/20 backdrop-blur-sm z-[60] flex items-center justify-center p-4" @click.self="showImportExportModal = false">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-xs overflow-hidden p-6 space-y-4 animate-pop-in relative">
+                    <button @click="showImportExportModal = false" class="absolute top-3 right-3 text-stone-400 hover:text-stone-600 p-1 rounded-full hover:bg-stone-100 transition-colors">
+                        <svg class="icon w-5 h-5" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
+                    <div class="text-center">
+                        <h3 class="text-lg font-bold text-stone-800">数据操作</h3>
+                        <p class="text-xs text-stone-400">导入或导出你的小说</p>
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <button @click="triggerImport" class="w-full py-3 bg-stone-800 text-white rounded-lg hover:bg-stone-700 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg">
+                            <svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z" transform="scale(1, -1) translate(0, -24)"/></svg>
+                            导入 TXT
+                        </button>
+                        <button @click="exportBook" class="w-full py-3 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200 active:scale-95 transition-colors flex items-center justify-center gap-2">
+                            <svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            导出 TXT
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+    <!-- 隐藏的文件输入框, 必须在 #app 内部 -->
+    <input type="file" ref="importFileInput" @change="importBook" accept=".txt" class="hidden">
     </div>
 
-    <script>
+   <script>
         const { createApp, ref, computed, onMounted, nextTick, watch, onUnmounted } = Vue;
 
         createApp({
@@ -711,10 +755,14 @@
                 const showDeleteCharModal = ref(false);
                 const charToDeleteIndex = ref(-1);
 
+               const showImportExportModal = ref(false);
+
                // 通用确认弹窗状态
                const showConfirmModal = ref(false);
                const confirmModalConfig = ref({});
                let confirmCallback = null;
+               const toast = ref({ show: false, message: '', icon: '', iconColor: '' });
+               let toastTimeout = null;
 
                 const showKey = ref(false);
                 const isGenerating = ref(false);
@@ -725,6 +773,7 @@
                 const modelSearch = ref('');
                 const availableModels = ref([]);
                 const mainScroll = ref(null);
+                const importFileInput = ref(null);
                 const currentChapterIndex = ref(-1);
                 const wordCountTarget = ref(2500);
 
@@ -817,6 +866,28 @@
                    confirmCallback = null;
                };
 
+               const showToast = (message, type = 'success') => {
+                   clearTimeout(toastTimeout);
+                   let icon, iconColor;
+                   switch (type) {
+                       case 'success':
+                           icon = '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>';
+                           iconColor = 'text-green-400';
+                           break;
+                       case 'error':
+                           icon = '<path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.59-13L12 10.59 8.41 7 7 8.41 10.59 12 7 15.59 8.41 17 12 13.41 15.59 17 17 15.59 13.41 12 17 8.41z"/>';
+                           iconColor = 'text-red-400';
+                           break;
+                       default:
+                           icon = '<path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>';
+                           iconColor = 'text-blue-400';
+                   }
+                   toast.value = { show: true, message, icon, iconColor };
+                   toastTimeout = setTimeout(() => {
+                       toast.value.show = false;
+                   }, 2000);
+               };
+
                 const openSettings = () => { showSettings.value = true; };
 
                 const addCharacter = () => {
@@ -833,6 +904,7 @@
                     if (charToDeleteIndex.value > -1) {
                         structuredCharacters.value.splice(charToDeleteIndex.value, 1);
                         saveData();
+                        showToast('角色已删除', 'success');
                         charToDeleteIndex.value = -1;
                     }
                     showDeleteCharModal.value = false;
@@ -883,6 +955,7 @@
                     chapters.value[index].isEditing = false;
                     chapters.value[index].wordCount = chapters.value[index].content.length;
                     saveData();
+                    showToast('章节已保存', 'success');
                     // 如果正在搜索，重新搜索以更新结果
                     if (searchQuery.value) performSearch();
                 };
@@ -995,6 +1068,7 @@
                        });
                        
                        saveData();
+                       showToast('替换成功', 'success');
                        performSearch();
                    });
                 };
@@ -1021,7 +1095,7 @@
                        });
                        
                        saveData();
-                       alert(`已替换 ${count} 处内容`);
+                       showToast(`已替换 ${count} 处内容`, 'success');
                        performSearch(); // 刷新结果（应该是空的了）
                    });
                 };
@@ -1094,10 +1168,10 @@
                     const chapter = chapters.value[index];
                     const text = `${chapter.title}\n\n${chapter.content}`;
                     navigator.clipboard.writeText(text).then(() => {
-                        alert('章节内容已复制到剪贴板');
+                        showToast('章节内容已复制', 'success');
                     }).catch(err => {
                         console.error('复制失败:', err);
-                        alert('复制失败，请手动复制');
+                        showToast('复制失败，请检查浏览器权限', 'error');
                     });
                 };
 
@@ -1118,9 +1192,12 @@
                 
                 // 导出书籍功能
                 const exportBook = () => {
-                    if (chapters.value.length === 0) return alert('暂无章节可导出');
-                    
-                    let content = `${novel.value.title || '无题'}\n\n`;
+                   if (chapters.value.length === 0) {
+                       showToast('暂无章节可导出', 'error');
+                       return;
+                   }
+                   showImportExportModal.value = false; // 关闭弹窗
+                   let content = `${novel.value.title || '无题'}\n\n`;
                     content += `简介/世界观：\n${novel.value.worldView || '暂无'}\n\n`;
                     content += `===========================\n\n`;
                     
@@ -1139,6 +1216,117 @@
                     link.click();
                     document.body.removeChild(link);
                     URL.revokeObjectURL(url);
+                    showToast('小说已开始导出', 'success');
+                };
+
+                const triggerImport = () => {
+                    showImportExportModal.value = false; // 关闭弹窗
+                    // 使用 nextTick 确保在 DOM 更新后执行 click
+                    nextTick(() => {
+                        if (importFileInput.value) {
+                            importFileInput.value.click();
+                        } else {
+                            console.error('File input element not found.');
+                            alert('无法打开文件选择器，请刷新页面重试。');
+                        }
+                    });
+                };
+
+                const importBook = (event) => {
+                   const file = event.target.files[0];
+                   if (!file) {
+                       event.target.value = '';
+                       return;
+                   }
+
+                   // 文件选择后，再弹出确认框
+                   openConfirmModal({
+                       title: '导入确认',
+                       message: `确定要导入文件 "${file.name}" 吗？这将覆盖当前所有内容。`,
+                       confirmBtnText: '确认导入',
+                       confirmBtnClass: 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30',
+                       icon: '<path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>',
+                       iconBg: 'bg-orange-100',
+                       iconColor: 'text-orange-500',
+                   }, () => {
+                       // 用户确认后，才开始读取和解析文件
+                       const reader = new FileReader();
+                       reader.onload = (e) => {
+                           try {
+                               const content = e.target.result;
+                               parseAndLoadImportedContent(content);
+                               showToast('小说导入成功', 'success');
+                           } catch (err) {
+                               console.error("导入失败:", err);
+                               openConfirmModal({
+                                   title: '导入失败',
+                                   message: err.message || '文件格式可能不正确或解析出错。',
+                                   confirmBtnText: '知道了',
+                                   confirmBtnClass: 'bg-red-500 hover:bg-red-600 shadow-red-500/30',
+                                   icon: '<path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.59-13L12 10.59 8.41 7 7 8.41 10.59 12 7 15.59 8.41 17 12 13.41 15.59 17 17 15.59 13.41 12 17 8.41z"/>',
+                                   iconBg: 'bg-red-100',
+                                   iconColor: 'text-red-500',
+                               }, () => {});
+                           } finally {
+                               event.target.value = '';
+                           }
+                       };
+                       reader.readAsText(file);
+                   }, () => {
+                       // 如果用户取消，则重置文件输入
+                       event.target.value = '';
+                   });
+                };
+
+                const parseAndLoadImportedContent = (content) => {
+                   // 初始化新的数据结构
+                   let newNovel = { title: '', worldView: '' };
+                   let newChapters = [];
+
+                   // 简单的切分逻辑
+                   const parts = content.split('===========================');
+                   if (parts.length < 2) throw new Error("文件格式不正确：缺少主要分隔符");
+
+                   // 解析头部（书名和世界观）
+                   const header = parts[0].trim();
+                   const headerLines = header.split('\n');
+                   newNovel.title = headerLines[0] || '无题';
+                   const worldViewMarker = '简介/世界观：';
+                   const worldViewIndex = header.indexOf(worldViewMarker);
+                   if (worldViewIndex !== -1) {
+                       newNovel.worldView = header.substring(worldViewIndex + worldViewMarker.length).trim();
+                   }
+
+                   // 解析章节
+                   const chaptersText = parts[1].trim();
+                   const chapterBlocks = chaptersText.split('---------------------------').filter(b => b.trim() !== '');
+
+                   chapterBlocks.forEach(block => {
+                       const lines = block.trim().split('\n');
+                       if (lines.length < 2) return;
+
+                       const titleLine = lines[0].trim();
+                       const chapterContent = lines.slice(1).join('\n').trim();
+                       
+                       // 从 "第 X 章 标题" 中提取纯标题
+                       const titleMatch = titleLine.match(/第\s*\d+\s*章\s*(.*)/);
+                       const chapterTitle = titleMatch ? titleMatch[1].trim() : titleLine;
+
+                       newChapters.push({
+                           title: chapterTitle,
+                           content: chapterContent,
+                           wordCount: chapterContent.length,
+                           isExpanded: false,
+                           showSummary: false,
+                           summary: '' // 导入时摘要为空，可后续生成
+                       });
+                   });
+
+                   // 应用新的数据
+                   novel.value = newNovel;
+                   chapters.value = newChapters;
+                   structuredCharacters.value = []; // 导入时清空角色，因为txt不包含此信息
+                   saveData();
                 };
 
                 const clearAll = () => {
@@ -1155,13 +1343,17 @@
                        structuredCharacters.value = [];
                        chapters.value = [];
                        saveData();
+                       showToast('所有内容已清空', 'success');
                    });
                 };
 
                 const selectModel = (id) => { settings.value.model = id; saveData(); };
 
                 const fetchModels = async () => {
-                    if (!settings.value.apiKey) return alert('请先填写 API Key');
+                    if (!settings.value.apiKey) {
+                        showToast('请先填写 API Key', 'error');
+                        return;
+                    }
                     isLoadingModels.value = true;
                     try {
                         const response = await fetch(`${settings.value.apiUrl}/models`, {
@@ -1174,7 +1366,7 @@
                         }
                     } catch (e) {
                         console.error(e);
-                        alert('获取模型列表失败: ' + e.message);
+                        showToast('获取模型列表失败', 'error');
                     } finally {
                         isLoadingModels.value = false;
                     }
@@ -1375,14 +1567,14 @@ ${charPrompt}
                 });
 
                 return {
-                    showSettings, showDeleteCharModal, showKey, isGenerating, isLoadingModels, mobileSidebarOpen, isMobile,
+                    showSettings, showDeleteCharModal, showKey, isGenerating, isLoadingModels, mobileSidebarOpen, isMobile, showImportExportModal,
                     novel, structuredCharacters, chapters, settings, streamContent, nextChapterPrompt,
                     generateCount, modelSearch, filteredModels, availableModels, wordCountTarget,
-                    showConfirmModal, confirmModalConfig, executeConfirm, cancelConfirm,
+                    showConfirmModal, confirmModalConfig, executeConfirm, cancelConfirm, toast, showToast,
                     totalWordCount, currentChapterIndex, mainScroll, currentTab, tabs,
                     showWordCountSelect, showGenerateCountSelect, wordCountOptions, generateCountOptions, wordCountLabel, generateCountLabel,
                     toggleChapter, scrollToChapter, scrollToTop, scrollToBottom, deleteChapter, regenerateChapter, copyChapter, exportBook,
-                    clearAll, selectModel, fetchModels, saveData, startGeneration,
+                    clearAll, selectModel, fetchModels, saveData, startGeneration, triggerImport, importBook, importFileInput,
                     renderMarkdown, addCharacter, removeCharacter, confirmDeleteCharacter, openSettings,
                     startChapterEdit, saveChapterEdit, cancelChapterEdit, renderChapterContent,
                     searchQuery, replaceQuery, searchResults, currentMatchIndex, hasSearched,
