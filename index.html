@@ -1444,6 +1444,24 @@
                         content += `${chapter.content}\n\n`;
                         content += `---------------------------\n\n`;
                     });
+
+                    // 导出角色卡
+                    if (structuredCharacters.value.length > 0) {
+                        content += `===========================\n角色卡汇总\n===========================\n\n`;
+                        structuredCharacters.value.forEach(char => {
+                            content += `姓名：${char.name}\n描述：${char.desc}\n\n`;
+                        });
+                    }
+
+                    // 在全文末尾统一导出摘要
+                    const summaries = chapters.value
+                        .map((c, i) => c.summary ? `第 ${i + 1} 章摘要：\n${c.summary}` : null)
+                        .filter(s => s)
+                        .join('\n\n');
+                    
+                    if (summaries) {
+                        content += `===========================\n剧情摘要汇总\n===========================\n\n${summaries}`;
+                    }
                     
                     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
                     const url = URL.createObjectURL(blob);
@@ -1524,12 +1542,17 @@
                    let newNovel = { title: '', worldView: '', isAdultMode: false };
                    let newChapters = [];
 
-                   // 简单的切分逻辑
-                   const parts = content.split('===========================');
-                   if (parts.length < 2) throw new Error("文件格式不正确：缺少主要分隔符");
+                   // 使用更稳健的方式切分头部和主体
+                   const mainSeparator = '===========================';
+                   const firstSeparatorIndex = content.indexOf(mainSeparator);
+                   
+                   if (firstSeparatorIndex === -1) throw new Error("文件格式不正确：缺少主要分隔符");
+                   
+                   const header = content.substring(0, firstSeparatorIndex).trim();
+                   // 跳过分隔符和可能紧随其后的换行符
+                   let bodyText = content.substring(firstSeparatorIndex + mainSeparator.length).trim();
 
                    // 解析头部（书名和世界观）
-                   const header = parts[0].trim();
                    const headerLines = header.split('\n');
                    newNovel.title = headerLines[0] || '无题';
                    const worldViewMarker = '简介/世界观：';
@@ -1538,11 +1561,64 @@
                        newNovel.worldView = header.substring(worldViewIndex + worldViewMarker.length).trim();
                    }
 
-                   // 解析章节
-                   const chaptersText = parts[1].trim();
+                   // 解析章节、角色卡和摘要
+                   // 顺序：正文 -> 角色卡 -> 摘要
+                   
+                   const charSeparator = '===========================\n角色卡汇总\n===========================';
+                   const summarySeparator = '===========================\n剧情摘要汇总\n===========================';
+                   
+                   let chaptersText = bodyText;
+                   let charsText = '';
+                   let summariesText = '';
+
+                   // 1. 尝试分离摘要部分（在最后）
+                   const summarySeparatorIndex = bodyText.indexOf(summarySeparator);
+                   if (summarySeparatorIndex !== -1) {
+                       summariesText = bodyText.substring(summarySeparatorIndex + summarySeparator.length).trim();
+                       // 剩余部分包含正文和可能的角色卡
+                       chaptersText = bodyText.substring(0, summarySeparatorIndex).trim();
+                   }
+
+                   // 2. 尝试分离角色卡部分（在正文后，摘要前）
+                   const charSeparatorIndex = chaptersText.indexOf(charSeparator);
+                   if (charSeparatorIndex !== -1) {
+                       charsText = chaptersText.substring(charSeparatorIndex + charSeparator.length).trim();
+                       // 剩余部分仅为正文
+                       chaptersText = chaptersText.substring(0, charSeparatorIndex).trim();
+                   }
+
+                   // 解析角色卡
+                   let newCharacters = [];
+                   if (charsText) {
+                       const charBlocks = charsText.split(/\n\n(?=姓名：)/);
+                       charBlocks.forEach(block => {
+                           const nameMatch = block.match(/姓名：(.*)/);
+                           const descMatch = block.match(/描述：([\s\S]*)/);
+                           if (nameMatch) {
+                               newCharacters.push({
+                                   id: Date.now() + Math.random(), // 简单的唯一ID生成
+                                   name: nameMatch[1].trim(),
+                                   desc: descMatch ? descMatch[1].trim() : ''
+                               });
+                           }
+                       });
+                   }
+
+                   // 解析摘要汇总
+                   const summariesMap = {};
+                   if (summariesText) {
+                       // 使用正则匹配每个摘要块
+                       const summaryRegex = /第 (\d+) 章摘要：\n([\s\S]*?)(?=(?:\n\n第 \d+ 章摘要：)|$)/g;
+                       let match;
+                       while ((match = summaryRegex.exec(summariesText)) !== null) {
+                           const chapterIndex = parseInt(match[1]) - 1;
+                           summariesMap[chapterIndex] = match[2].trim();
+                       }
+                   }
+
                    const chapterBlocks = chaptersText.split('---------------------------').filter(b => b.trim() !== '');
 
-                   chapterBlocks.forEach(block => {
+                   chapterBlocks.forEach((block, index) => {
                        const lines = block.trim().split('\n');
                        if (lines.length < 2) return;
 
@@ -1559,7 +1635,7 @@
                            wordCount: chapterContent.length,
                            isExpanded: false,
                            showSummary: false,
-                           summary: '', // 导入时摘要为空，可后续生成
+                           summary: summariesMap[index] || '', // 从映射中获取摘要
                            contentHeight: 0 // 为动画增加高度属性
                        });
                    });
@@ -1569,6 +1645,7 @@
                    if (bookIndex !== -1) {
                        books.value[bookIndex].novel = newNovel;
                        books.value[bookIndex].chapters = newChapters;
+                       books.value[bookIndex].characters = newCharacters; // 更新角色数据
                        books.value[bookIndex].title = newNovel.title;
                        books.value[bookIndex].wordCount = newChapters.reduce((acc, cur) => acc + cur.wordCount, 0);
                    }
